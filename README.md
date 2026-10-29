@@ -1,58 +1,48 @@
+# Lambda CSV Copy — Serverless S3 Pipeline with AWS CDK
 
-# Welcome to your CDK Python project!
+An **infrastructure-as-code** project built with **AWS CDK in Python**. It deploys an event-driven, serverless pipeline that automatically copies every CSV file uploaded to a source S3 bucket into a destination bucket.
 
-This is a blank project for CDK development with Python.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
-
-To manually create a virtualenv on MacOS and Linux:
+## Architecture
 
 ```
-$ python -m venv .venv
+CSV upload ──► S3 source bucket ──(ObjectCreated, *.csv)──► Lambda (Docker image) ──► S3 destination bucket /processed/
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+The CDK stack (`lambda_csv_copy/lambda_csv_copy_stack.py`) defines:
 
+- **Two S3 buckets** (source and destination) with automatic cleanup on stack deletion
+- A **Lambda function packaged as a Docker container image** (`lambda_src/`, based on the AWS Python 3.11 Lambda image)
+- An **S3 event notification** that triggers the Lambda only for `.csv` files
+- **Least-privilege IAM permissions**: read-only access to the source bucket, write-only access to the destination bucket
+- **Stack outputs** with the generated bucket names
+
+The repository also includes a **Lambda layer** experiment (`layer_src/`, `layer_demo_src/`): a ZIP-packaged function that imports `python-dateutil` from a shared layer instead of bundling it. It is commented out in the stack and can be enabled by uncommenting it.
+
+## Project Structure
+
+| Path | Description |
+|---|---|
+| `app.py` | CDK app entry point |
+| `lambda_csv_copy/` | CDK stack definition |
+| `lambda_src/` | Lambda handler and Dockerfile |
+| `layer_src/`, `layer_demo_src/` | Lambda layer and demo function |
+| `tests/` | Stack test scaffold (CDK assertions, pytest) |
+
+## Deploying
+
+Requirements: Python 3.11+, Node.js, the AWS CDK CLI (`npm install -g aws-cdk`), Docker and configured AWS credentials.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install aws-cdk-lib constructs
+cdk bootstrap                    # first time only
+cdk synth
+cdk deploy
 ```
-$ source .venv/bin/activate
-```
 
-If you are a Windows platform, you would activate the virtualenv like this:
+Remove all resources with `cdk destroy`.
 
-```
-% .venv\Scripts\activate.bat
-```
+## Tech Stack
 
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
-```
-
-At this point you can now synthesize the CloudFormation template for this code.
-
-```
-$ cdk synth
-```
-
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-## Useful commands
-
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
-
-Enjoy!
+Python · AWS CDK · AWS Lambda · Amazon S3 · IAM · CloudFormation · Docker
